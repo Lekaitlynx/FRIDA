@@ -1,0 +1,49 @@
+from gpiozero import Servo
+from time import sleep
+
+# === CONFIG ===
+SERVO_PIN    = 17
+MIN_PULSE    = 0.5 / 1000    # 0° → 0.5 ms
+MAX_PULSE    = 2.5 / 1000    # 180° → 2.5 ms
+STEP_DELAY   = 0.2           # seconds between each 1° step (↑ larger = slower)
+PAUSE_TIME   = 1             # seconds to hold at each angle
+ANGLES       = [0, 15, 45, 60, 90, 110, 180]
+# ===============
+
+# initialize the servo
+servo = Servo(
+    SERVO_PIN,
+    min_pulse_width=MIN_PULSE,
+    max_pulse_width=MAX_PULSE
+)
+
+def slow_to(angle, delay=STEP_DELAY):
+    """
+    Sweep from current → `angle` in 1° increments,
+    pausing `delay` seconds each step.
+    """
+    # clamp into range
+    angle = max(0, min(180, angle))
+
+    # read current position (–1…+1 → 0…180°)
+    cur_val = servo.value if servo.value is not None else -1
+    cur_deg = (cur_val + 1) * 90
+
+    step = 1 if angle > cur_deg else -1
+    for deg in range(int(cur_deg), angle, step):
+        servo.value = (deg / 90.0) - 1
+        sleep(delay)
+
+    # ensure exact final position
+    servo.value = (angle / 90.0) - 1
+
+# === MAIN LOOP ===
+try:
+    while True:
+        for tgt in ANGLES:
+            print(f"Moving slowly to {tgt}°")
+            slow_to(tgt)
+            print(f"Holding at {tgt}° for {PAUSE_TIME}s")
+            sleep(PAUSE_TIME)
+except KeyboardInterrupt:
+    print("Stopping.")
